@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: evaluate-causal-dag
+Version: 0.1.0
+Summary: Multi-dimensional causal DAG accuracy evaluation
+Requires-Python: >=3.10
+Provides-Extra: dev
+License-File: LICENSE
