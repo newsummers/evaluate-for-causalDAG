@@ -246,11 +246,13 @@ class TestGetLocalMarkovTriplets:
         triplets = get_local_markov_triplets(dag)
         # Y: parents={}, descendants={X,Z}, non-desc={}              → no triplets
         # X: parents={Y}, descendants={},   non-desc-non-parents={Z} → (X, Z, {Y})
-        # Z: parents={Y}, descendants={},   non-desc-non-parents={X} → (Z, X, {Y})
-        nodes_and_others = {(t.node, t.other) for t in triplets}
-        assert ("X", "Z") in nodes_and_others
-        assert ("Z", "X") in nodes_and_others
-        assert all(t.parents == frozenset({"Y"}) for t in triplets)
+        # Z: parents={Y}, descendants={},   non-desc-non-parents={X} → (Z, X, {Y}) — symmetric duplicate, skipped
+        # Since Pa(X) == Pa(Z) == {Y}, the pair (X, Z, {Y}) / (Z, X, {Y}) represents
+        # the same CI test; only one triplet should be generated.
+        assert len(triplets) == 1
+        t = triplets[0]
+        assert frozenset({t.node, t.other}) == frozenset({"X", "Z"})
+        assert t.parents == frozenset({"Y"})
 
     def test_cycle_raises(self):
         g = nx.DiGraph([("A", "B"), ("B", "A")])
