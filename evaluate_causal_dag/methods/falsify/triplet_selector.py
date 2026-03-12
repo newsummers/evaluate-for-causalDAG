@@ -24,7 +24,7 @@ Edge-suggestion triplets
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import FrozenSet, List, Tuple
+from typing import FrozenSet, List, Set, Tuple
 
 import networkx as nx
 
@@ -99,6 +99,7 @@ def get_local_markov_triplets(dag: nx.DiGraph) -> List[LocalMarkovTriplet]:
         raise ValueError("The input graph must be a DAG (no cycles).")
 
     triplets: List[LocalMarkovTriplet] = []
+    seen: Set[Tuple[str, str, FrozenSet[str]]] = set()
     nodes = list(dag.nodes())
 
     for node in nodes:
@@ -112,6 +113,13 @@ def get_local_markov_triplets(dag: nx.DiGraph) -> List[LocalMarkovTriplet]:
                 continue
             if other in parents:
                 continue
+            # Use a canonical key to deduplicate symmetric triplets:
+            # (A, B, S) and (B, A, S) represent the same CI test when S is the same.
+            a, b = (node, other) if node <= other else (other, node)
+            canonical_key: Tuple[str, str, FrozenSet[str]] = (a, b, parents)
+            if canonical_key in seen:
+                continue
+            seen.add(canonical_key)
             triplets.append(LocalMarkovTriplet(node=node, other=other, parents=parents))
 
     return triplets
