@@ -320,13 +320,13 @@ class TestFalsifyGraphEvaluator:
         ev = FalsifyGraphEvaluator()
         result = ev.evaluate(dag, self.data_chain)
         assert isinstance(result, EvaluationResult)
-        assert not result.is_falsified
+        assert len(result.violations) == 0
 
     def test_correct_fork_not_falsified(self):
         dag = _fork_dag()
         ev = FalsifyGraphEvaluator()
         result = ev.evaluate(dag, self.data_fork)
-        assert not result.is_falsified
+        assert len(result.violations) == 0
 
     def test_wrong_graph_falsified(self):
         """A graph that removes Y→Z should be falsified against chain data.
@@ -336,7 +336,7 @@ class TestFalsifyGraphEvaluator:
         dag = _wrong_dag()  # X→Y, no Y→Z
         ev = FalsifyGraphEvaluator()
         result = ev.evaluate(dag, self.data_chain)
-        assert result.is_falsified
+        assert len(result.violations) > 0
 
     def test_result_counts(self):
         dag = _chain_dag()
@@ -344,6 +344,28 @@ class TestFalsifyGraphEvaluator:
         result = ev.evaluate(dag, self.data_chain)
         assert result.n_total == result.n_tests + result.n_cached
         assert len(result.test_results) == result.n_total
+
+    def test_split_lmc_edge_counts(self):
+        """LMC and edge counts must be reported separately."""
+        dag = _chain_dag()
+        ev = FalsifyGraphEvaluator()
+
+        # Without suggestions: edge counts must be zero
+        r = ev.evaluate(dag, self.data_chain)
+        assert r.n_edge_tests == 0
+        assert r.n_edge_cached == 0
+        assert r.n_lmc_tests == r.n_tests
+        assert r.n_lmc_cached == r.n_cached
+
+        ev.clear_cache()
+
+        # With suggestions: both LMC and edge counts must be non-negative and
+        # their sums must match the combined totals.
+        r2 = ev.evaluate(dag, self.data_chain, include_suggestions=True)
+        assert r2.n_lmc_tests >= 0
+        assert r2.n_edge_tests >= 0
+        assert r2.n_tests == r2.n_lmc_tests + r2.n_edge_tests
+        assert r2.n_cached == r2.n_lmc_cached + r2.n_edge_cached
 
     def test_violation_rate_bounds(self):
         dag = _chain_dag()
@@ -450,7 +472,9 @@ class TestFalsifyGraphEvaluator:
         result = ev.evaluate(dag, self.data_chain)
         s = result.summary()
         assert isinstance(s, str)
-        assert "Verdict" in s
+        assert "LMC tests" in s
+        assert "Violations" in s
+        assert "Verdict" not in s
 
     # ------------------------------------------------------------------
     # Alternative CI test method
@@ -473,7 +497,7 @@ class TestFalsifyGraphEvaluator:
         ev = FalsifyGraphEvaluator()
         result = ev.evaluate(dag, data)
         assert result.n_total == 0
-        assert not result.is_falsified
+        assert len(result.violations) == 0
 
     def test_unknown_method_raises(self):
         with pytest.raises(ValueError, match="Unknown CI test method"):

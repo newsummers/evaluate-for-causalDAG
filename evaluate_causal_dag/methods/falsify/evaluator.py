@@ -84,10 +84,15 @@ class EvaluationResult:
 
     Attributes
     ----------
-    n_tests:
-        Total number of CI tests that were run (cached results *not* counted).
-    n_cached:
-        Number of CI tests whose result was retrieved from the cache.
+    n_lmc_tests:
+        Number of Local Markov Condition CI tests freshly computed (not cached).
+    n_lmc_cached:
+        Number of LMC CI tests whose result was retrieved from the cache.
+    n_edge_tests:
+        Number of edge-suggestion CI tests freshly computed (not cached).
+    n_edge_cached:
+        Number of edge-suggestion CI tests whose result was retrieved from the
+        cache.
     test_results:
         All CI test results (both freshly computed and cached).
     violations:
@@ -97,8 +102,10 @@ class EvaluationResult:
         Edge suggestions (only populated when ``include_suggestions=True``).
     """
 
-    n_tests: int
-    n_cached: int
+    n_lmc_tests: int
+    n_lmc_cached: int
+    n_edge_tests: int
+    n_edge_cached: int
     test_results: list[CITestResult]
     violations: list[CITestResult]
     suggestions: list[EdgeSuggestion]
@@ -106,6 +113,16 @@ class EvaluationResult:
     # ------------------------------------------------------------------
     # Derived properties
     # ------------------------------------------------------------------
+
+    @property
+    def n_tests(self) -> int:
+        """Total freshly computed CI tests (LMC + edge suggestions)."""
+        return self.n_lmc_tests + self.n_edge_tests
+
+    @property
+    def n_cached(self) -> int:
+        """Total CI tests retrieved from cache (LMC + edge suggestions)."""
+        return self.n_lmc_cached + self.n_edge_cached
 
     @property
     def n_total(self) -> int:
@@ -119,26 +136,19 @@ class EvaluationResult:
             return 0.0
         return len(self.violations) / self.n_total
 
-    @property
-    def is_falsified(self) -> bool:
-        """``True`` when at least one Markov violation was found."""
-        return len(self.violations) > 0
-
     # ------------------------------------------------------------------
     # Presentation
     # ------------------------------------------------------------------
 
     def summary(self) -> str:
         """Return a concise human-readable evaluation summary."""
+        n_lmc_total = self.n_lmc_tests + self.n_lmc_cached
+        n_edge_total = self.n_edge_tests + self.n_edge_cached
         lines = [
             "=== Causal Graph Evaluation Summary ===",
-            f"  Total triplets evaluated : {self.n_total}",
-            f"  Freshly computed         : {self.n_tests}",
-            f"  Retrieved from cache     : {self.n_cached}",
-            f"  Violations               : {len(self.violations)} "
-            f"({self.violation_rate:.1%})",
-            f"  Verdict                  : "
-            f"{'FALSIFIED' if self.is_falsified else 'NOT FALSIFIED'}",
+            f"  LMC tests  — total: {n_lmc_total}, computed: {self.n_lmc_tests}, cached: {self.n_lmc_cached}",
+            f"  Edge tests — total: {n_edge_total}, computed: {self.n_edge_tests}, cached: {self.n_edge_cached}",
+            f"  Violations : {len(self.violations)} / {self.n_total} ({self.violation_rate:.1%})",
         ]
         if self.violations:
             lines.append("  Violations detail:")
@@ -153,7 +163,7 @@ class EvaluationResult:
     def __repr__(self) -> str:
         return (
             f"EvaluationResult(violations={len(self.violations)}/{self.n_total}, "
-            f"falsified={self.is_falsified})"
+            f"violation_rate={self.violation_rate:.1%})"
         )
 
 
@@ -193,8 +203,8 @@ class FalsifyGraphEvaluator:
     >>> dag = nx.DiGraph([("X", "Y"), ("Y", "Z")])
     >>> evaluator = FalsifyGraphEvaluator()
     >>> result = evaluator.evaluate(dag, data)
-    >>> result.is_falsified
-    False
+    >>> len(result.violations)
+    0
     """
 
     def __init__(
@@ -236,22 +246,24 @@ class FalsifyGraphEvaluator:
         EvaluationResult
         """
         triplets = get_local_markov_triplets(dag)
-        all_results, n_tests, n_cached = self._run_lm_tests(data, triplets)
+        all_results, lmc_tests, lmc_cached = self._run_lm_tests(data, triplets)
 
         violations = [r for r in all_results if not r.is_independent]
 
         suggestions: list[EdgeSuggestion] = []
+        edge_tests = 0
+        edge_cached = 0
         if include_suggestions:
             edge_triplets = get_edge_suggestion_triplets(dag)
-            suggestions, s_new, s_cached = self._run_edge_suggestions(
+            suggestions, edge_tests, edge_cached = self._run_edge_suggestions(
                 data, edge_triplets
             )
-            n_tests += s_new
-            n_cached += s_cached
 
         return EvaluationResult(
-            n_tests=n_tests,
-            n_cached=n_cached,
+            n_lmc_tests=lmc_tests,
+            n_lmc_cached=lmc_cached,
+            n_edge_tests=edge_tests,
+            n_edge_cached=edge_cached,
             test_results=all_results,
             violations=violations,
             suggestions=suggestions,
