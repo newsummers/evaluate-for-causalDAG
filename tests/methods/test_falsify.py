@@ -223,6 +223,182 @@ class TestMutualInfoTest:
         assert result.method is IndependenceTestMethod.MUTUAL_INFO
 
 
+class TestKernelBasedTest:
+    """Kernel-based (HSIC) CI test sanity checks."""
+
+    data_chain = _chain_data()
+    data_fork = _fork_data()
+
+    def test_marginal_dependence(self):
+        """X and Z are marginally dependent in chain data."""
+        result = run_ci_test(
+            self.data_chain, "X", "Z", [],
+            method=IndependenceTestMethod.KERNEL_BASED, alpha=0.05,
+        )
+        assert not result.is_independent, "X and Z should be dependent marginally"
+        assert result.p_value < 0.05
+
+    def test_conditional_independence_chain(self):
+        """In chain X→Y→Z, X ⊥ Z | Y should hold."""
+        result = run_ci_test(
+            self.data_chain, "X", "Z", ["Y"],
+            method=IndependenceTestMethod.KERNEL_BASED, alpha=0.05,
+        )
+        assert result.is_independent, "X ⊥ Z | Y should hold in chain"
+
+    def test_conditional_independence_fork(self):
+        """In fork X←Y→Z, X ⊥ Z | Y should hold."""
+        result = run_ci_test(
+            self.data_fork, "X", "Z", ["Y"],
+            method=IndependenceTestMethod.KERNEL_BASED, alpha=0.05,
+        )
+        assert result.is_independent
+
+    def test_method_field(self):
+        result = run_ci_test(
+            self.data_chain, "X", "Y", [],
+            method=IndependenceTestMethod.KERNEL_BASED,
+        )
+        assert result.method is IndependenceTestMethod.KERNEL_BASED
+
+    def test_small_sample_returns_nan(self):
+        tiny = pd.DataFrame({"A": [1.0, 2.0], "B": [2.0, 3.0]})
+        result = run_ci_test(
+            tiny, "A", "B", [],
+            method=IndependenceTestMethod.KERNEL_BASED,
+        )
+        assert np.isnan(result.p_value)
+
+
+class TestApproxKernelBasedTest:
+    """Approximate kernel-based CI test sanity checks."""
+
+    data_chain = _chain_data()
+    data_fork = _fork_data()
+
+    def test_marginal_dependence(self):
+        result = run_ci_test(
+            self.data_chain, "X", "Z", [],
+            method=IndependenceTestMethod.APPROX_KERNEL_BASED, alpha=0.05,
+        )
+        assert not result.is_independent, "X and Z should be dependent marginally"
+
+    def test_conditional_independence_chain(self):
+        result = run_ci_test(
+            self.data_chain, "X", "Z", ["Y"],
+            method=IndependenceTestMethod.APPROX_KERNEL_BASED, alpha=0.05,
+        )
+        assert result.is_independent, "X ⊥ Z | Y should hold in chain"
+
+    def test_conditional_independence_fork(self):
+        result = run_ci_test(
+            self.data_fork, "X", "Z", ["Y"],
+            method=IndependenceTestMethod.APPROX_KERNEL_BASED, alpha=0.05,
+        )
+        assert result.is_independent
+
+    def test_method_field(self):
+        result = run_ci_test(
+            self.data_chain, "X", "Y", [],
+            method=IndependenceTestMethod.APPROX_KERNEL_BASED,
+        )
+        assert result.method is IndependenceTestMethod.APPROX_KERNEL_BASED
+
+    def test_small_sample_returns_nan(self):
+        tiny = pd.DataFrame({"A": [1.0, 2.0], "B": [2.0, 3.0]})
+        result = run_ci_test(
+            tiny, "A", "B", [],
+            method=IndependenceTestMethod.APPROX_KERNEL_BASED,
+        )
+        assert np.isnan(result.p_value)
+
+
+class TestRegressionBasedTest:
+    """Regression-based CI test sanity checks."""
+
+    data_chain = _chain_data()
+    data_fork = _fork_data()
+
+    def test_marginal_dependence(self):
+        result = run_ci_test(
+            self.data_chain, "X", "Z", [],
+            method=IndependenceTestMethod.REGRESSION_BASED, alpha=0.05,
+        )
+        assert not result.is_independent, "X and Z should be dependent marginally"
+
+    def test_conditional_independence_chain(self):
+        result = run_ci_test(
+            self.data_chain, "X", "Z", ["Y"],
+            method=IndependenceTestMethod.REGRESSION_BASED, alpha=0.05,
+        )
+        assert result.is_independent, "X ⊥ Z | Y should hold in chain"
+
+    def test_conditional_independence_fork(self):
+        result = run_ci_test(
+            self.data_fork, "X", "Z", ["Y"],
+            method=IndependenceTestMethod.REGRESSION_BASED, alpha=0.05,
+        )
+        assert result.is_independent
+
+    def test_method_field(self):
+        result = run_ci_test(
+            self.data_chain, "X", "Y", [],
+            method=IndependenceTestMethod.REGRESSION_BASED,
+        )
+        assert result.method is IndependenceTestMethod.REGRESSION_BASED
+
+    def test_small_sample_returns_nan(self):
+        tiny = pd.DataFrame({"A": [1.0, 2.0], "B": [2.0, 3.0]})
+        result = run_ci_test(
+            tiny, "A", "B", [],
+            method=IndependenceTestMethod.REGRESSION_BASED,
+        )
+        assert np.isnan(result.p_value)
+
+
+class TestGeneralisedCovBasedTest:
+    """Generalised Covariance Measure CI test sanity checks."""
+
+    data_chain = _chain_data()
+    data_fork = _fork_data()
+
+    def test_marginal_dependence(self):
+        result = run_ci_test(
+            self.data_chain, "X", "Z", [],
+            method=IndependenceTestMethod.GENERALISED_COV_BASED, alpha=0.05,
+        )
+        assert not result.is_independent, "X and Z should be dependent marginally"
+
+    def test_conditional_independence_chain(self):
+        result = run_ci_test(
+            self.data_chain, "X", "Z", ["Y"],
+            method=IndependenceTestMethod.GENERALISED_COV_BASED, alpha=0.05,
+        )
+        assert result.is_independent, "X ⊥ Z | Y should hold in chain"
+
+    def test_conditional_independence_fork(self):
+        result = run_ci_test(
+            self.data_fork, "X", "Z", ["Y"],
+            method=IndependenceTestMethod.GENERALISED_COV_BASED, alpha=0.05,
+        )
+        assert result.is_independent
+
+    def test_method_field(self):
+        result = run_ci_test(
+            self.data_chain, "X", "Y", [],
+            method=IndependenceTestMethod.GENERALISED_COV_BASED,
+        )
+        assert result.method is IndependenceTestMethod.GENERALISED_COV_BASED
+
+    def test_small_sample_returns_nan(self):
+        tiny = pd.DataFrame({"A": [1.0, 2.0], "B": [2.0, 3.0]})
+        result = run_ci_test(
+            tiny, "A", "B", [],
+            method=IndependenceTestMethod.GENERALISED_COV_BASED,
+        )
+        assert np.isnan(result.p_value)
+
+
 # ---------------------------------------------------------------------------
 # Triplet selection
 # ---------------------------------------------------------------------------
@@ -507,6 +683,39 @@ class TestFalsifyGraphEvaluator:
         ev = FalsifyGraphEvaluator(method=IndependenceTestMethod.MUTUAL_INFO)
         result = ev.evaluate(dag, self.data_chain)
         assert isinstance(result, EvaluationResult)
+
+    def test_kernel_based_method_runs(self):
+        dag = _chain_dag()
+        ev = FalsifyGraphEvaluator(method=IndependenceTestMethod.KERNEL_BASED)
+        result = ev.evaluate(dag, self.data_chain)
+        assert isinstance(result, EvaluationResult)
+        assert len(result.violations) == 0
+
+    def test_approx_kernel_based_method_runs(self):
+        dag = _chain_dag()
+        ev = FalsifyGraphEvaluator(method=IndependenceTestMethod.APPROX_KERNEL_BASED)
+        result = ev.evaluate(dag, self.data_chain)
+        assert isinstance(result, EvaluationResult)
+        assert len(result.violations) == 0
+
+    def test_regression_based_method_runs(self):
+        dag = _chain_dag()
+        ev = FalsifyGraphEvaluator(method=IndependenceTestMethod.REGRESSION_BASED)
+        result = ev.evaluate(dag, self.data_chain)
+        assert isinstance(result, EvaluationResult)
+        assert len(result.violations) == 0
+
+    def test_generalised_cov_based_method_runs(self):
+        dag = _chain_dag()
+        ev = FalsifyGraphEvaluator(method=IndependenceTestMethod.GENERALISED_COV_BASED)
+        result = ev.evaluate(dag, self.data_chain)
+        assert isinstance(result, EvaluationResult)
+        assert len(result.violations) == 0
+
+    def test_default_method_is_kernel_based(self):
+        """The default CI test method should be KERNEL_BASED."""
+        ev = FalsifyGraphEvaluator()
+        assert ev.method is IndependenceTestMethod.KERNEL_BASED
 
     # ------------------------------------------------------------------
     # Edge cases
