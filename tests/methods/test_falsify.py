@@ -246,13 +246,35 @@ class TestGetLocalMarkovTriplets:
         triplets = get_local_markov_triplets(dag)
         # Y: parents={}, descendants={X,Z}, non-desc={}              → no triplets
         # X: parents={Y}, descendants={},   non-desc-non-parents={Z} → (X, Z, {Y})
-        # Z: parents={Y}, descendants={},   non-desc-non-parents={X} → (Z, X, {Y}) — symmetric duplicate, skipped
-        # Since Pa(X) == Pa(Z) == {Y}, the pair (X, Z, {Y}) / (Z, X, {Y}) represents
-        # the same CI test; only one triplet should be generated.
-        assert len(triplets) == 1
-        t = triplets[0]
-        assert frozenset({t.node, t.other}) == frozenset({"X", "Z"})
-        assert t.parents == frozenset({"Y"})
+        # Z: parents={Y}, descendants={},   non-desc-non-parents={X} → (Z, X, {Y})
+        assert len(triplets) == 2
+        nodes_others = {frozenset({t.node, t.other}) for t in triplets}
+        assert nodes_others == {frozenset({"X", "Z"})}
+        for t in triplets:
+            assert t.parents == frozenset({"Y"})
+
+    def test_include_unconditional_false(self):
+        """Root nodes (no parents) should be skipped when include_unconditional=False."""
+        # In a 3-node graph A → B, A → C:
+        # A has no parents → skipped when include_unconditional=False
+        # B: parents={A}, non-desc-non-parents={C} → (B, C, {A})
+        # C: parents={A}, non-desc-non-parents={B} → (C, B, {A})
+        dag = nx.DiGraph([("A", "B"), ("A", "C")])
+        triplets_all = get_local_markov_triplets(dag, include_unconditional=True)
+        triplets_cond = get_local_markov_triplets(dag, include_unconditional=False)
+        # With include_unconditional=True, A's non-desc-non-parents are empty anyway,
+        # so both calls should return the same triplets for non-root nodes.
+        assert len(triplets_all) == len(triplets_cond)
+        # Introduce a root node with non-descendants: isolated node alongside a chain.
+        # Use a 4-node graph: root R (no parents), R → X → Y, R is non-desc of Z
+        dag2 = nx.DiGraph([("R", "X"), ("X", "Y")])
+        dag2.add_node("Z")  # isolated node
+        # R: parents={}, descendants={X,Y}, non-desc-non-parents={Z} → 1 unconditional triplet
+        triplets2_all = get_local_markov_triplets(dag2, include_unconditional=True)
+        triplets2_cond = get_local_markov_triplets(dag2, include_unconditional=False)
+        # The unconditional triplet (R, Z, {}) should be excluded
+        assert any(t.node == "R" and t.parents == frozenset() for t in triplets2_all)
+        assert not any(t.node == "R" for t in triplets2_cond)
 
     def test_cycle_raises(self):
         g = nx.DiGraph([("A", "B"), ("B", "A")])
