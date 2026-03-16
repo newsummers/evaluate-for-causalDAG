@@ -24,7 +24,7 @@ Edge-suggestion triplets
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import FrozenSet, List, Set, Tuple
+from typing import FrozenSet, List
 
 import networkx as nx
 
@@ -73,7 +73,10 @@ class EdgeSuggestionTriplet:
 # ---------------------------------------------------------------------------
 
 
-def get_local_markov_triplets(dag: nx.DiGraph) -> List[LocalMarkovTriplet]:
+def get_local_markov_triplets(
+    dag: nx.DiGraph,
+    include_unconditional: bool = True,
+) -> List[LocalMarkovTriplet]:
     """Return all Local-Markov independence statements implied by *dag*.
 
     For every node *X* and every non-descendant, non-parent node *Z* the
@@ -83,6 +86,10 @@ def get_local_markov_triplets(dag: nx.DiGraph) -> List[LocalMarkovTriplet]:
     ----------
     dag:
         A directed acyclic graph represented as :class:`networkx.DiGraph`.
+    include_unconditional:
+        If *True* (default), include triplets where *X* has no parents
+        (i.e. unconditional independence statements ``X ⊥ Z | ∅``).
+        Set to *False* to skip root nodes whose conditioning set is empty.
 
     Returns
     -------
@@ -99,27 +106,22 @@ def get_local_markov_triplets(dag: nx.DiGraph) -> List[LocalMarkovTriplet]:
         raise ValueError("The input graph must be a DAG (no cycles).")
 
     triplets: List[LocalMarkovTriplet] = []
-    seen: Set[Tuple[str, str, FrozenSet[str]]] = set()
     nodes = list(dag.nodes())
 
     for node in nodes:
         parents: FrozenSet[str] = frozenset(dag.predecessors(node))
+        if not parents and not include_unconditional:
+            continue
         descendants: set = nx.descendants(dag, node)
 
-        for other in nodes:
-            if other == node:
-                continue
-            if other in descendants:
-                continue
-            if other in parents:
-                continue
-            # Use a canonical key to deduplicate symmetric triplets:
-            # (A, B, S) and (B, A, S) represent the same CI test when S is the same.
-            a, b = (node, other) if node <= other else (other, node)
-            canonical_key: Tuple[str, str, FrozenSet[str]] = (a, b, parents)
-            if canonical_key in seen:
-                continue
-            seen.add(canonical_key)
+        non_desc_non_parents = [
+            other for other in nodes
+            if other != node and other not in descendants and other not in parents
+        ]
+        if not non_desc_non_parents:
+            continue
+
+        for other in non_desc_non_parents:
             triplets.append(LocalMarkovTriplet(node=node, other=other, parents=parents))
 
     return triplets
