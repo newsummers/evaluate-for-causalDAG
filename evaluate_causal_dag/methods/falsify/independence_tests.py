@@ -531,9 +531,6 @@ def approx_kernel_based_test(
         for feat in (x_feat, y_feat):
             coef, _, _, _ = np.linalg.lstsq(z_aug, feat, rcond=None)
             feat -= z_aug @ coef
-        # Re-bind names (in-place subtraction already updated arrays, but be explicit)
-        x_feat = x_feat
-        y_feat = y_feat
 
     # Test statistic: squared Frobenius norm of cross-covariance
     def _cross_cov_stat(xf: np.ndarray, yf: np.ndarray) -> float:
@@ -576,10 +573,10 @@ def _f_test_p_value(
 
     Returns 1.0 when the F-statistic is non-positive (full model not better).
     """
-    if df_full >= n or df_full <= df_reduced:
+    if df_full >= n - 1 or df_full <= df_reduced:
         return 1.0
-    numerator = (rss_reduced - rss_full) / max(df_full - df_reduced, 1)
-    denominator = rss_full / max(n - df_full, 1)
+    numerator = (rss_reduced - rss_full) / (df_full - df_reduced)
+    denominator = rss_full / (n - df_full)
     if denominator <= 0 or numerator <= 0:
         return 1.0
     f_stat = numerator / denominator
