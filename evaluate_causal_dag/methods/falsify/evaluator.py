@@ -183,7 +183,7 @@ class FalsifyGraphEvaluator:
     Parameters
     ----------
     method:
-        CI test method to use.  Defaults to Fisher's Z.
+        CI test method to use.  Defaults to kernel-based (HSIC).
     alpha:
         Significance level for hypothesis tests.
     cache:
@@ -209,7 +209,7 @@ class FalsifyGraphEvaluator:
 
     def __init__(
         self,
-        method: IndependenceTestMethod = IndependenceTestMethod.FISHER_Z,
+        method: IndependenceTestMethod = IndependenceTestMethod.KERNEL_BASED,
         alpha: float = 0.05,
         cache: Optional[CITestCache] = None,
     ) -> None:
