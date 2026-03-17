@@ -131,10 +131,11 @@ class EvaluationResult:
 
     @property
     def violation_rate(self) -> float:
-        """Fraction of triplets that violated the Markov condition."""
-        if self.n_total == 0:
+        """Fraction of LMC triplets that violated the Markov condition."""
+        n_lmc_total = self.n_lmc_tests + self.n_lmc_cached
+        if n_lmc_total == 0:
             return 0.0
-        return len(self.violations) / self.n_total
+        return len(self.violations) / n_lmc_total
 
     # ------------------------------------------------------------------
     # Presentation
@@ -148,7 +149,7 @@ class EvaluationResult:
             "=== Causal Graph Evaluation Summary ===",
             f"  LMC tests  — total: {n_lmc_total}, computed: {self.n_lmc_tests}, cached: {self.n_lmc_cached}",
             f"  Edge tests — total: {n_edge_total}, computed: {self.n_edge_tests}, cached: {self.n_edge_cached}",
-            f"  Violations : {len(self.violations)} / {self.n_total} ({self.violation_rate:.1%})",
+            f"  Violations : {len(self.violations)} / {n_lmc_total} ({self.violation_rate:.1%})",
         ]
         if self.violations:
             lines.append("  Violations detail:")
@@ -161,8 +162,9 @@ class EvaluationResult:
         return "\n".join(lines)
 
     def __repr__(self) -> str:
+        n_lmc_total = self.n_lmc_tests + self.n_lmc_cached
         return (
-            f"EvaluationResult(violations={len(self.violations)}/{self.n_total}, "
+            f"EvaluationResult(violations={len(self.violations)}/{n_lmc_total}, "
             f"violation_rate={self.violation_rate:.1%})"
         )
 
