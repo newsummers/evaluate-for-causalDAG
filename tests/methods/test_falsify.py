@@ -571,6 +571,17 @@ class TestFalsifyGraphEvaluator:
         result = ev.evaluate(dag, self.data_chain)
         assert 0.0 <= result.violation_rate <= 1.0
 
+    def test_violation_rate_uses_only_lmc_tests(self):
+        dag = _wrong_dag()
+        ev = FalsifyGraphEvaluator()
+        result = ev.evaluate(dag, self.data_chain, include_suggestions=True)
+
+        n_lmc_total = result.n_lmc_tests + result.n_lmc_cached
+        assert n_lmc_total > 0
+        assert result.n_edge_tests + result.n_edge_cached > 0
+        assert result.violation_rate == len(result.violations) / n_lmc_total
+        assert f"Violations : {len(result.violations)} / {n_lmc_total}" in result.summary()
+
     # ------------------------------------------------------------------
     # Caching
     # ------------------------------------------------------------------
